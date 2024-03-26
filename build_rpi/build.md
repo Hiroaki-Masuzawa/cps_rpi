@@ -121,3 +121,20 @@ cd ${HOME}/catkin_ws
 rm -rf devel build
 catkin_make
 ```
+
+## supervisorの追加
+### supervisorのインストール
+```
+sudo apt install supervisor
+```
+### supervisorの設定
+```
+sudo cp supervisord.conf /etc/supervisor/supervisord.conf
+sudo cp exec_robot.conf /etc/supervisor/conf.d/.
+```
+### 起動用launchのダウンロード
+```
+wget https://raw.githubusercontent.com/IRSL-tut/cps_rpi_docker/main/userdir/run_robot.launch -O $HOME/run_robot.launch
+```
+### supervisorのコマンド起動
+```sudo service supervisor start```
