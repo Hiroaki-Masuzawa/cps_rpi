@@ -43,8 +43,10 @@ class RPIController:
 
     def send_settings(self, sensor_config_path, dynamimxel_config, controller_config):
         date_string = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        dist_dir = '/tmp/{}'.format(date_string)
-        latest_dir = '/tmp/latest_settings'
+        # dist_dir = '/tmp/{}'.format(date_string)
+        # latest_dir = '/tmp/latest_settings'
+        dist_dir = '/home/{}/cps_settings/{}'.format(self.username, date_string)
+        latest_dir = '/home/{}/cps_settings/latest_settings'.format(self.username)
 
 
         put_sensor_config_path = '{}/all_sensor.yaml'.format(dist_dir)
