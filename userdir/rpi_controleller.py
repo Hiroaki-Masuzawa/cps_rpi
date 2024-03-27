@@ -11,11 +11,12 @@ import paramiko
 import scp
 
 # 参考資料
-# 
+#
 # paramico
 # https://ashitaka-blog.com/2022-07-07-065334/
 # paramico and scp
 # https://qiita.com/Angelan1720/items/a962e12fa81724b57526
+
 
 class RPIController:
     def __init__(self, robotname, ros_settings_path):
@@ -30,46 +31,53 @@ class RPIController:
         self.username = setting['username']
         self.password = setting['password']
         self.robotname = robotname
-        os.environ['ROS_MASTER_URI']='http://{}:11311'.format(setting['robot_ip_addr'])
+        os.environ['ROS_MASTER_URI'] = 'http://{}:11311'.format(
+            setting['robot_ip_addr'])
         os.environ['ROS_IP'] = setting['host_ip_addr']
         os.environ['ROS_HOSTNAME'] = setting['host_ip_addr']
-        
+
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.client.connect(hostname=self.hostname, port=22, username=self.username, password=self.password)
-        
-        self.ssh_stds = {} 
-        self.source_command = 'source /home/{}/catkin_ws/devel/setup.bash'.format(self.username)
+        self.client.connect(hostname=self.hostname, port=22,
+                            username=self.username, password=self.password)
+
+        self.ssh_stds = {}
+        self.source_command = 'source /home/{}/catkin_ws/devel/setup.bash'.format(
+            self.username)
 
     def send_settings(self, sensor_config_path, dynamimxel_config, controller_config):
         date_string = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         # dist_dir = '/tmp/{}'.format(date_string)
         # latest_dir = '/tmp/latest_settings'
-        dist_dir = '/home/{}/cps_settings/{}'.format(self.username, date_string)
-        latest_dir = '/home/{}/cps_settings/latest_settings'.format(self.username)
-
+        dist_dir = '/home/{}/cps_settings/{}'.format(
+            self.username, date_string)
+        latest_dir = '/home/{}/cps_settings/latest_settings'.format(
+            self.username)
 
         put_sensor_config_path = '{}/all_sensor.yaml'.format(dist_dir)
         put_dynamixel_config_path = '{}/config.yaml'.format(dist_dir)
-        put_controller_config_path = '{}/controller_config.yaml'.format(dist_dir)
+        put_controller_config_path = '{}/controller_config.yaml'.format(
+            dist_dir)
 
         load_sensor_config_path = '{}/all_sensor.yaml'.format(latest_dir)
         load_dynamixel_config_path = '{}/config.yaml'.format(latest_dir)
-        load_controller_config_path = '{}/controller_config.yaml'.format(latest_dir)
+        load_controller_config_path = '{}/controller_config.yaml'.format(
+            latest_dir)
 
-        make_shell = 'echo -e \'trap \\"trap - SIGTERM && kill -- -\$\$\\" SIGINT SIGTERM EXIT\\n{} && roslaunch /home/{}/run_robot.launch dynamixel_settings:={} controller_settings:={} namespace:={} sensor_config_path:={} & \\nwait\\n\' > {}/run_robot.sh'.format(self.source_command, self.username, 
-                                                                                                            load_dynamixel_config_path, load_controller_config_path, 
-                                                                                                            self.robotname, load_sensor_config_path, dist_dir)
+        make_shell = 'echo -e \'trap \\"trap - SIGTERM && kill -- -\$\$\\" SIGINT SIGTERM EXIT\\n{} && roslaunch /home/{}/run_robot.launch dynamixel_settings:={} controller_settings:={} namespace:={} sensor_config_path:={} & \\nwait\\n\' > {}/run_robot.sh'.format(self.source_command, self.username,
+                                                                                                                                                                                                                                                                        load_dynamixel_config_path, load_controller_config_path,
+                                                                                                                                                                                                                                                                        self.robotname, load_sensor_config_path, dist_dir)
         # print(make_shell)
-        command = 'bash -lc "mkdir -p {} && rm -f {} && ln -s {} {} && {}"'.format(dist_dir, latest_dir, dist_dir, latest_dir, make_shell)
+        command = 'bash -lc "mkdir -p {} && rm -f {} && ln -s {} {} && {}"'.format(
+            dist_dir, latest_dir, dist_dir, latest_dir, make_shell)
         # print(command)
-        self.ssh_stds["operation"] = self.client.exec_command(command, get_pty=True)
+        self.ssh_stds["operation"] = self.client.exec_command(
+            command, get_pty=True)
         time.sleep(2)
         with scp.SCPClient(self.client.get_transport()) as scpc:
             scpc.put(sensor_config_path, put_sensor_config_path)
             scpc.put(dynamimxel_config, put_dynamixel_config_path)
             scpc.put(controller_config, put_controller_config_path)
-        
 
     def connect_sensor(self, sensor_config_path):
         """connect sensors
@@ -77,14 +85,15 @@ class RPIController:
             sensor_config (str): filepath to sensor configration 
         """
         put_sensor_config_path = "/tmp/all_sensor.yaml"
-        
+
         with scp.SCPClient(self.client.get_transport()) as scpc:
             scpc.put(sensor_config_path, put_sensor_config_path)
 
-        command = 'bash -lc "{} && roslaunch sensor_pi sensor_pi.launch config_path:={} namespace:={}"'.format(self.source_command, put_sensor_config_path, self.robotname)
-        self.ssh_stds["sensor"] = self.client.exec_command(command, get_pty=True)
+        command = 'bash -lc "{} && roslaunch sensor_pi sensor_pi.launch config_path:={} namespace:={}"'.format(
+            self.source_command, put_sensor_config_path, self.robotname)
+        self.ssh_stds["sensor"] = self.client.exec_command(
+            command, get_pty=True)
 
-        
     def disconnect_sensor(self):
         """disconnect sensors
         """
@@ -105,10 +114,12 @@ class RPIController:
         with scp.SCPClient(self.client.get_transport()) as scpc:
             scpc.put(dynamimxel_config, put_dynamixel_config_path)
             scpc.put(controller_config, put_controller_config_path)
-        
-        command = 'bash -lc "{} && roslaunch dynamixel_irsl controllers.launch dynamixel_settings:={} controller_settings:={} namespace:={}"'.format(self.source_command, put_dynamixel_config_path, put_controller_config_path, self.robotname)
-        self.ssh_stds["dynamixel"] = self.client.exec_command(command, get_pty=True)
-    
+
+        command = 'bash -lc "{} && roslaunch dynamixel_irsl controllers.launch dynamixel_settings:={} controller_settings:={} namespace:={}"'.format(
+            self.source_command, put_dynamixel_config_path, put_controller_config_path, self.robotname)
+        self.ssh_stds["dynamixel"] = self.client.exec_command(
+            command, get_pty=True)
+
     def discnnet_dynamixel(self):
         """disconnect dynamixels 
         """
@@ -124,13 +135,12 @@ class RPIController:
                 if len(rl) > 0:
                     return stdout.channel.recv(2048).decode("utf-8")
         return ""
-    
+
     def get_sensor_stdout(self):
         return self.get_stdout(self.ssh_stds["sensor"][1])
-    
+
     def get_dynaxmiel_stdout(self):
         return self.get_stdout(self.ssh_stds["dynamixel"][1])
-
 
     def __del__(self):
         # self.discnnet_dynamixel()
